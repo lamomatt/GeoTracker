@@ -48,6 +48,7 @@ import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RunningServiceInfo;
 import android.app.ActivityManager.RunningTaskInfo;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -61,10 +62,15 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 @SuppressLint({ "NewApi"})
@@ -291,5 +297,29 @@ public class MainActivity extends FragmentActivity {
 		super.onDestroy();
 		Log.i("MainActivity","onDestroy");
 		finish();
+	}
+	
+	/*Function: onOptionsItemSelected
+	 * handles menu operations. This function shows details of "About Geotracker" project
+	 * 
+	 */
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    // Handle item selection
+	    switch (item.getItemId()) {
+	        case R.id.about:
+	        	AlertDialog alertDialog;
+	        	alertDialog = new AlertDialog.Builder(this).create();
+	        	alertDialog.setTitle("GeoTracker v1");
+	        	alertDialog.setMessage("Geotracker helps to identify the current location of the device with the " +
+	        			"help of Google Map." + " GeoTracker also has a service to capture location details in " +
+	        					"background which can be enabled at user's convenience. "+" The list of locations helps the " +
+	        							"user to keep track of history. " +
+	        							" Br Lal Mohan");
+	        	alertDialog.show();
+	            return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
 	}
 }

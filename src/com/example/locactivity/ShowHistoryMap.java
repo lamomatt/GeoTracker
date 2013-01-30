@@ -21,11 +21,15 @@ package com.example.locactivity;
  */
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
@@ -41,11 +45,12 @@ import com.google.android.maps.MapView;
 import com.google.android.maps.Overlay;
 import com.google.android.maps.OverlayItem;
 
-public class ShowHistoryMap extends MapActivity{
+public class ShowHistoryMap<E> extends MapActivity{
 
 	double latitude;
 	double longitude;
 	List<Address> addresses = null;
+	private ArrayList<ListItem> list = null;
 	MapView mapView;
 	private ProgressDialog progressDialog; 
 	
@@ -92,8 +97,35 @@ public class ShowHistoryMap extends MapActivity{
 	    OverlayItem overlayitem = new OverlayItem(point, address, city+", "+countryCode);
 	    MapController mapController = mapView.getController();
 	    mapController.setCenter(point);
-	    
 	    itemsoverlay.addOverlay(overlayitem);
+	    
+	    //show marker for all entries in db
+	    getLocList();
+	    ListItem l;
+	    Iterator<ListItem> it = list.iterator();
+	    while(it.hasNext()){
+	    	l = it.next();
+	    	point = new GeoPoint((int)(Double.valueOf(l.getLatitude().trim()).doubleValue()*1e6),(int)(Double.valueOf(l.getLongitude().trim()).doubleValue()*1e6));
+	    	
+	    	try {
+				addresses = gcd.getFromLocation(Double.valueOf(l.getLatitude().trim()).doubleValue(),Double.valueOf(l.getLongitude().trim()).doubleValue(), 1);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			address = addresses.get(0).getAddressLine(0);
+			city = addresses.get(0).getAddressLine(1);
+			country = addresses.get(0).getAddressLine(2);
+			countryCode = addresses.get(0).getCountryCode();
+			
+			overlayitem = new OverlayItem(point, address, city+", "+countryCode);
+		    overlayitem.setMarker(drawable);
+		    itemsoverlay.addOverlay(overlayitem);
+		    Log.i("ShowHistoryMap", "showMap "+list.size());
+		    Log.i("ShowHistoryMap", "onCreate "+countryCode);
+	    }
+	    
+	    
 	    mapOverlays.add(itemsoverlay);
 	    
 /*	    ShowMapAsyncTask asyncTask = new ShowMapAsyncTask(this);
@@ -123,7 +155,7 @@ public class ShowHistoryMap extends MapActivity{
 	}
 	
 	
-private class ShowMapAsyncTask extends AsyncTask<Void, Void, Void>{
+/*private class ShowMapAsyncTask extends AsyncTask<Void, Void, Void>{
 	Context asyncContext;
 	
 	public ShowMapAsyncTask(Context context){
@@ -157,10 +189,10 @@ private class ShowMapAsyncTask extends AsyncTask<Void, Void, Void>{
 		String city = addresses.get(0).getAddressLine(1);
 		String country = addresses.get(0).getAddressLine(2);
 		String countryCode = addresses.get(0).getCountryCode();
-		Log.i("ShowHistoryMap", "onCreate: City: "+city);
-		Log.i("ShowHistoryMap", "onCreate: Country: "+country);
-		Log.i("ShowHistoryMap", "onCreate: Address: "+address);
-		Log.i("ShowHistoryMap", "onCreate: Country Code: "+countryCode);
+		Log.i("ShowHistoryMap", "showMap: City: "+city);
+		Log.i("ShowHistoryMap", "showMap: Country: "+country);
+		Log.i("ShowHistoryMap", "showMap: Address: "+address);
+		Log.i("ShowHistoryMap", "showMap: Country Code: "+countryCode);
 		
         mapView = (MapView) findViewById(R.id.mapview);
         mapView.setVisibility(View.VISIBLE);
@@ -175,13 +207,63 @@ private class ShowMapAsyncTask extends AsyncTask<Void, Void, Void>{
 	    GeoPoint point = new GeoPoint((int)(latitude*1e6),(int)(longitude*1e6));
 	    OverlayItem overlayitem = new OverlayItem(point, address, city+", "+countryCode);
 	    overlayitem.setMarker(drawable);
+		MapController mapController = mapView.getController();
+		mapController.setCenter(point);
+		itemsoverlay.addOverlay(overlayitem);
+		Log.i("ShowHistoryMap", "showMap ");
+	    getLocList();
+	    ListItem l;
+	    Log.i("ShowHistoryMap", "showMap "+list.size());
+	    while(list.iterator().hasNext()){
+	    	l = list.iterator().next();
+	    	point = new GeoPoint((int)(Double.valueOf(l.getLatitude().trim()).doubleValue()*1e6),(int)(Double.valueOf(l.getLongitude().trim()).doubleValue()*1e6));
+		    overlayitem = new OverlayItem(point, l.getCity(), countryCode);
+		    overlayitem.setMarker(drawable);
+		    itemsoverlay.addOverlay(overlayitem);
+		    Log.i("ShowHistoryMap", "showMap "+countryCode);
+	    }
 	    
 	    
-	    itemsoverlay.addOverlay(overlayitem);
 	    mapOverlays.add(itemsoverlay);
 	}
   
 	
+}*/
+
+/*Function: getLocHist 
+ * Reads the location details from db "GeoTrack"  and sets value in the ListItem list.
+ * Inorder to preserve the cronological order while viewing the list, a list reversal is done. 
+ * Finally, a thread is started to check for any change in the list. 
+ */
+private void getLocList(){
+	
+	list = new ArrayList<ListItem>();
+	ListItem l;
+	
+    try {
+		//read GeoTracker database
+    	DatabaseHandler db = new DatabaseHandler(this, "GeoTrack", null, 9);
+    	Cursor cursor = db.readDB();
+    	Log.i("ShowHistoryMap","getLocHist:");
+        // looping through all rows and adding to list
+        if (cursor.moveToFirst()) {
+            do {
+            	l= new ListItem();
+            	l.setCity(cursor.getString(3)+","+cursor.getString(4));
+            	l.setDate(cursor.getString(5));
+            	l.setLatitude(String.valueOf(cursor.getDouble(1)));
+            	l.setLongitude(String.valueOf(cursor.getDouble(2)));
+            	list.add(l);
+            	Log.i("ShowHistoryMap","getLocHist:"+cursor.getInt(0));
+            	Log.i("ShowHistoryMap","getLocList: Retreiving History: "+l.getCity()+", "+l.getLatitude()+", "+l.getLongitude()+", "+l.getDate());
+            } while (cursor.moveToNext());
+        }
+    	db.close();
+    }catch (Exception e) {
+    	e.printStackTrace();
+    } 
+    Collections.reverse(list);
+    
 }
 
 
